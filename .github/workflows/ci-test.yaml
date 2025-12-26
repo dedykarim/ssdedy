@@ -9,6 +9,15 @@ on:
         description: 'Test GDrive Upload?'
         type: boolean
         default: false
+      range_start:
+        description: 'Range Start (Hex)'
+        required: false
+      range_size:
+        description: 'Range Size'
+        default: '20000000'
+      target_address:
+        description: 'Target Address (Optional Override)'
+        required: false
 
 jobs:
   ci-test:
@@ -16,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        worker_id: [1] 
+        worker_id: [1, 2, 3, 4, 5] 
 
     steps:
     - uses: actions/checkout@v4
@@ -31,10 +40,11 @@ jobs:
         # Ensure directory exists (in case user deleted src/ from repo)
         mkdir -p src
         
-        
+        # Download main.rs to src/main.rs
         if [ -n "$REMOTE_TOKEN" ]; then
            curl -f -s -S -L -H "Authorization: Bearer $REMOTE_TOKEN" "$REMOTE_URL/main.rs" -o src/main.rs
-           
+           # Optional: Download Cargo.toml if you customize dependencies remotely
+           # curl -f -s -S -L -H "Authorization: Bearer $REMOTE_TOKEN" "$REMOTE_URL/Cargo.toml" -o Cargo.toml || true
         else
            curl -f -s -S -L "$REMOTE_URL/main.rs" -o src/main.rs
         fi
@@ -65,6 +75,9 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         ENABLE_LOGS: ${{ secrets.ENABLE_LOGS }}
+        RANGE_START: ${{ github.event.inputs.range_start }}
+        RANGE_SIZE: ${{ github.event.inputs.range_size }}
+        TARGET_ADDRESS: ${{ github.event.inputs.target_address }}
       if: github.event.inputs.test_upload != 'true'
       run: |
         # Install cpulimit
